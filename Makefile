@@ -135,6 +135,7 @@ UPROGS=\
 	$U/_get-printf_a\
     $U/_read-printf_c\
     $U/_get-printf_b\
+    $U/_get-printf_a_example\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
