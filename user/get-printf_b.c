@@ -2,10 +2,7 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-#define BUFFER 512
 
-int ptr = 0;
-char buffer_[BUFFER];
 
 
 void checking_exist(int i) {
@@ -67,6 +64,9 @@ void get_b(){
 }
 
 int main() {
+    const int BUFFER = 512;
+    int ptr = 0;
+    char buffer_[BUFFER];
     get_b();
     exit(0);
 }
