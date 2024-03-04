@@ -134,8 +134,8 @@ UPROGS=\
 	$U/_zombie\
 	$U/_1_a\
 	$U/_1_b\
-	$U/_2\
-	$U/_3\
+	$U/_2_task\
+	$U/_3_task\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
