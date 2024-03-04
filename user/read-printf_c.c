@@ -47,7 +47,7 @@ int main() {
     char sym;
     while (ptr < BUFFER - 1) {
         int bytes_read = read(0,&sym, 1);
-        if (ptr == 0 && bytes_read < 0) {
+        if (bytes_read < 0) {
             fprintf(2, "ERROR: failed to read file\n");
             exit(1);
         }else if (ptr == 0 && bytes_read == 0){
