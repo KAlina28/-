@@ -683,32 +683,36 @@ procdump(void)
   }
 }
 
-uint64 ps_listinfo(void){
-    uint64 address; int lim;
-    argaddr(0, &address); argint(1, &lim);
-    struct procinfo pc_;
+uint64 ps_listinfo(pcinfo *plist, int lim){
     int cnt = 0;
+    pcinfo pc_;
     for (struct proc* pc = proc; pc < &proc[NPROC]; ++pc){
         acquire(&pc->lock);
         if (pc->state != UNUSED){
             cnt++;
-            if (address){
+            if (plist){
                 if (lim < cnt){
                     release(&pc->lock);
                     return cnt + 1;
                 }
-                strncpy(pc_.name, pc->name, sizeof (pc_.name));
+                strncpy(pc_.name, pc->name, sizeof (pc->name));
                 acquire(&wait_lock);
                 pc_.state = pc->state; pc_.parent_pid = pc->parent ? pc->parent->pid : -1;
                 release(&wait_lock);
-                if (copyout(myproc()->pagetable, address, (char*)&pc_, sizeof (pc_)) < 0){
+                if (copyout(myproc()->pagetable, (uint64)(plist), (char*)&pc_, sizeof (pc_)) != 0){
                     release(&pc->lock);
                     return -2;
                 }
-                address += sizeof(struct procinfo);
+                plist ++;
             }
         }
         release(&pc->lock);
     }
     return cnt;
+}
+
+uint64 sys_ppcinfo(void){
+    uint64 plist; int lim;
+    argaddr(0, &plist); argint(1, &lim);
+    return ps_listinfo((pcinfo *)plist, lim);
 }

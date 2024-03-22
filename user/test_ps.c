@@ -20,8 +20,8 @@ int main(int argc, char *argv[]){
         fprintf(2, "error: failed test with invalid address\n");
     }
 
-    pcinfo plist[NPROC];
-    res = ps_listinfo(plist, NPROC);
+    pcinfo plist[5];
+    res = ppcinfo((uint64)plist, 5);
     if (res >= 0) {
         fprintf(1, "success processes\n", res);
     }else {
