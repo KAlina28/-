@@ -697,7 +697,15 @@ uint64 ps_listinfo(pcinfo *plist, int lim){
                 }
                 strncpy(pc_.name, pc->name, sizeof (pc->name));
                 acquire(&wait_lock);
-                pc_.state = pc->state; pc_.parent_pid = pc->parent ? pc->parent->pid : -1;
+                pc_.state = pc->state;
+                // захват parent
+                if (pc->parent) {
+                    acquire(&pc->parent->lock);
+                    pc_.parent_pid = pc->parent->pid;
+                    release(&pc->parent->lock);
+                } else {
+                    pc_.parent_pid = -1;
+                }
                 release(&wait_lock);
                 if (copyout(myproc()->pagetable, (uint64)(plist), (char*)&pc_, sizeof (pc_)) != 0){
                     release(&pc->lock);
