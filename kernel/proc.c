@@ -307,13 +307,14 @@ fork(void)
   for(i = 0; i < NOFILE; i++)
     if(p->ofile[i])
       np->ofile[i] = filedup(p->ofile[i]);
-  np->cwd = idup(p->cwd);
   for(i = 0; i < NOMUTEX; i++){
-      np->table_mutex[i] = p->table_mutex[i];
-      if (np->table_mutex[i] != -1){
-          use_mutex(np->table_mutex[i]);
-      }
+    np->table_mutex[i] = p->table_mutex[i];
+    if (np->table_mutex[i] != -1){
+        use_mutex(np->table_mutex[i]);
+    }
   }
+  np->cwd = idup(p->cwd);
+
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 

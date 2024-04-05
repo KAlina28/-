@@ -22,7 +22,13 @@ int checker_mutex(int descriptor){
     if (descriptor < 0){
         return -1;
     }
-    if (descriptor >= NMUTEX) {
+    if (descriptor >= NOMUTEX) {
+        return -1;
+    }
+    if (myproc()->table_mutex[descriptor] < 0){
+        return -1;
+    }
+    if (myproc()->table_mutex[descriptor] >= NMUTEX){
         return -1;
     }
     return 0;
@@ -33,7 +39,7 @@ int acquire_mutex(int descriptor) {
     if (checker_mutex(descriptor) == -1){
         return -1;
     }
-    acquiresleep(&mutex_[descriptor].sl_lock);
+    acquiresleep(&mutex_[myproc()->table_mutex[descriptor]].sl_lock);
     return 0;
 }
 
@@ -42,28 +48,28 @@ int release_mutex(int descriptor){
     if (checker_mutex(descriptor) == -1){
         return -1;
     }
-    releasesleep(&mutex_[descriptor].sl_lock);
+    releasesleep(&mutex_[myproc()->table_mutex[descriptor]].sl_lock);
     return 0;
 }
 
 int create_mutex(void){
-    struct proc* p = myproc();
     for (int i = 0; i < NMUTEX; ++i){
         acquire(&mutex_[i].sp_lock);
         if (mutex_[i].locked != 0){
             release(&mutex_[i].sp_lock);
         }else{
             mutex_[i].locked = 1;
+            release(&mutex_[i].sp_lock);
+            struct proc* p = myproc();
             acquire(&p->lock);
             for (int j = 0; j < NOMUTEX; ++j){
-                if (p->table_mutex[j] == 0){
+                if (p->table_mutex[j] == -1){
                     p->table_mutex[j] = i;
                     release(&p->lock);
                     return j;
                 }
             }
             release(&p->lock);
-            release(&mutex_[i].sp_lock);
             return -1;
         }
     }
@@ -74,8 +80,8 @@ int use_mutex(int descriptor){
     if (checker_mutex(descriptor) == -1){
         return -1;
     }
-    acquire(&mutex_[descriptor].sp_lock); mutex_[descriptor].locked ++;
-    release(&mutex_[descriptor].sp_lock);
+    acquire(&mutex_[myproc()->table_mutex[descriptor]].sp_lock); mutex_[myproc()->table_mutex[descriptor]].locked += 1;
+    release(&mutex_[myproc()->table_mutex[descriptor]].sp_lock);
     return 0;
 }
 
@@ -84,22 +90,17 @@ int free_mutex(int descriptor){
     if (checker_mutex(descriptor) == -1){
         return -1;
     }
-    acquire(&mutex_[descriptor].sp_lock);
-    if (mutex_[descriptor].locked == 0){
-        release(&mutex_[descriptor].sp_lock);
+    release_mutex(descriptor);
+    struct proc* p = myproc();
+    acquire(&mutex_[p->table_mutex[descriptor]].sp_lock);
+    if (mutex_[p->table_mutex[descriptor]].locked == 0){
+        release(&mutex_[p->table_mutex[descriptor]].sp_lock);
         return -1;
     }
-    struct proc* p = myproc();
-    acquire(&p->lock);
-    for (int i =0 ; i< NOMUTEX; ++i){
-        if (p->table_mutex[i] == descriptor){
-            mutex_[descriptor].locked --;
-            p->table_mutex[i] = -1;
-            release(&mutex_[descriptor].sp_lock);
-            return 0;
-        }
-    }
-    return -1;
+    p->table_mutex[descriptor] = -1;
+    mutex_[descriptor].locked--;
+    release(&mutex_[descriptor].sp_lock);
+    return 0;
 }
 
 
