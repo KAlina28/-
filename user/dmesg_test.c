@@ -17,7 +17,10 @@ int main(int argc, char *argv[]){
         }else{
             wait(&s);
             char *buf = (char *) malloc(sizeof (char) * BUFFER_SIZE);
-            printf("size: %d\n", dmesg(buf, BUFFER_SIZE));
+            if (dmesg(buf, BUFFER_SIZE) < 0){
+                fprintf(2, "error");
+                exit(1);
+            }
             printf("%s", buf);
             free(buf);
         }
@@ -27,7 +30,7 @@ int main(int argc, char *argv[]){
         fprintf(2, "error");
         exit(1);
     }
-    if (dmesg(buf, BUFFER_SIZE) != BUFFER_SIZE){
+    if (dmesg(buf, BUFFER_SIZE) < 0){
         fprintf(2, "error");
         exit(1);
     }
