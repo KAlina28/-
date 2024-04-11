@@ -128,9 +128,25 @@ int sys_dmesg(void){
     if (!buffer || size_ <= 0){
         return -1;
     }
-//    acquire(&buf_.lock);
-//not done
-    return 1;
+    acquire(&buf_.lock);
+    int ptr_tail = buf_.tail;
+    for (int i = 0; i < size_; ++i){
+        if (ptr_tail != buf_.tail){
+            break;
+        }
+        if (copyout(myproc()->pagetable, buffer + i, &buf_.buf[ptr_tail], 1) < 0){
+            release(&buf_.lock);
+            return -1;
+        }
+        ptr_tail = (ptr_tail + 1) % BUFFER_SIZE;
+    }
+    char not_end = 0;
+    if (copyout(myproc()->pagetable, buffer + size_, &not_end, 1) < 0){
+        release(&buf_.lock);
+        return -1;
+    }
+    release(&buf_.lock);
+    return 0;
 }
 
 

@@ -4,5 +4,34 @@
 #include "kernek/param.h"
 
 int main(int argc, char *argv[]){
-
+    if (argc < 2){
+        fprintf(2, "error");
+        exit(-1);
+    }
+    if (argc == 2 && strcmp(argv[1], "st") == 0){
+        int pid = fork();
+        int s;
+        if (pid == 0){
+            exec("vm", argv);
+            exit(0);
+        }else{
+            wait(&s);
+            char *buf = (char *) malloc(sizeof (char) * BUFFER_SIZE);
+            printf("size: %d\n", dmesg(buf, BUFFER_SIZE));
+            printf("%s", buf);
+            free(buf);
+        }
+    }
+    char *buf = (char *) malloc(sizeof (char) * BUFFER_SIZE);
+    if (!buf){
+        fprintf(2, "error");
+        exit(1);
+    }
+    if (dmesg(buf, BUFFER_SIZE) != BUFFER_SIZE){
+        fprintf(2, "error");
+        exit(1);
+    }
+    printf("%s", buf);
+    free(buf);
+    exit(0);
 }
