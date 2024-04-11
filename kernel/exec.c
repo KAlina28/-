@@ -30,7 +30,9 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pagetable_t pagetable = 0, oldpagetable;
   struct proc *p = myproc();
-
+  acquire(&p->lock);
+  pr_msg("exec: pid %d, name of program -  %s", p->pid, path);
+  release(&p->lock);
   begin_op();
 
   if((ip = namei(path)) == 0){

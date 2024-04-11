@@ -32,9 +32,7 @@ void write_string(char *s){
         s = "(null)";
     }
     for(;*s; ++s){
-        release(&buf_.lock);
         add_to_queue(*s);
-        acquire(&buf_.lock);
     }
 }
 
@@ -52,15 +50,12 @@ void write_int(int sign, int num, int base){
     if (sign && num < 0){
         buffer[i] = '-';
     }
-    release(&buf_.lock);
     while (i-- >= 0){
         add_to_queue(buffer[i]);
     }
-    acquire(&buf_.lock);
 }
 
 void write_pointer(uint64 x){
-    release(&buf_.lock);
     add_to_queue('0');
     add_to_queue('x');
     const char cnvrtr[] = "0123456789abcdef";
@@ -68,16 +63,13 @@ void write_pointer(uint64 x){
     for (int i = 0; i < size_; i++, x<<=4){
         add_to_queue(cnvrtr[x >> (size_*4-4)]);
     }
-    acquire(&buf_.lock);
 }
 
 void vprintf_(const char *fmt, va_list args){
     int c;
     for(; (c = *fmt) != '\0'; fmt++){
         if (c != '%'){
-            release(&buf_.lock);
             add_to_queue(c);
-            acquire(&buf_.lock);
             continue;
         }
         c = *(++fmt);
@@ -86,9 +78,7 @@ void vprintf_(const char *fmt, va_list args){
         }
         switch (c) {
             case '%':
-                release(&buf_.lock);
                 add_to_queue('%');
-                acquire(&buf_.lock);
                 break;
             case 'd': //десятичное число
                 write_int(1, va_arg(args, int), 10);
@@ -103,10 +93,8 @@ void vprintf_(const char *fmt, va_list args){
                 write_string(va_arg(args, char*));
                 break;
             default:  //просто текст
-                release(&buf_.lock);
                 add_to_queue('%');
                 add_to_queue(c);
-                acquire(&buf_.lock);
                 break;
         }
     }
@@ -122,19 +110,27 @@ void pr_msg(const char *fmt, ...){
     write_int(1,ticks, 10);//вывод тек время
     add_to_queue(']');
     add_to_queue(' ');
-    acquire(&buf_.lock);
     va_list args;
     if (fmt == 0){
-        release(&buf_.lock);
         panic("error: null fmt");
     }
     va_start(args, fmt);
     vprintf_(fmt, args);
     va_end(args);
-    release(&buf_.lock);
     add_to_queue('\n');
 }
 
 
+int sys_dmesg(void){
+    uint64 buffer; int size_;
+    argaddr(0, &buffer);
+    argint(1, &size_);
+    if (!buffer || size_ <= 0){
+        return -1;
+    }
+//    acquire(&buf_.lock);
+//not done
+    return 1;
+}
 
 
