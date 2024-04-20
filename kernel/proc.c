@@ -55,7 +55,7 @@ procinit(void)
       initlock(&p->lock, "proc");
       p->state = UNUSED;
       p->kstack = KSTACK((int) (p - proc));
-      for (int i = 0; i < NOMUTEX; ++i){ p->table_mutex[i] = -1;} // сначала ничего нет
+//      for (int i = 0; i < NOMUTEX; ++i){ p->table_mutex[i] = -1;} // сначала ничего нет
   }
 }
 
@@ -309,8 +309,10 @@ fork(void)
       np->ofile[i] = filedup(p->ofile[i]);
   for(i = 0; i < NOMUTEX; i++){
     np->table_mutex[i] = p->table_mutex[i];
-    if (np->table_mutex[i] != -1){
-        use_mutex(np->table_mutex[i]);
+    if (p->table_mutex[i] != 0){
+        acquire(&p->table_mutex[i]->sp_lock);
+        p->table_mutex[i]->locked++;
+        release(&p->table_mutex[i]->sp_lock);
     }
   }
   np->cwd = idup(p->cwd);
@@ -360,8 +362,8 @@ exit(int status)
     panic("init exiting");
 
   for (int i = 0; i < NOMUTEX; ++i){
-      if (p->table_mutex[i] != -1){
-          free_mutex(p->table_mutex[i]);
+      if (p->table_mutex[i] != 0){
+          free_mutex(i);
       }
   }
 

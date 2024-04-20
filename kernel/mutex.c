@@ -1,20 +1,18 @@
 #include "types.h"
 #include "param.h"
-#include "spinlock.h"
-#include "sleeplock.h"
-#include "mutex.h"
-#include "riscv.h"
-#include "defs.h"
 #include "memlayout.h"
+#include "riscv.h"
 #include "proc.h"
+#include "defs.h"
 
-mutex mutex_[NMUTEX];
+struct mutex mutex_[NMUTEX];
 
 void init_mutex(void){ // создание
     for (int i = 0; i < NMUTEX; ++i){
         initlock(&mutex_[i].sp_lock, "spin_lock");
         initsleeplock(&mutex_[i].sl_lock, "sleep_lock");
         mutex_[i].locked = 0;
+        mutex_[i].pid = -1;
     }
 }
 
@@ -25,12 +23,6 @@ int checker_mutex(int descriptor){
     if (descriptor >= NOMUTEX) {
         return -1;
     }
-    if (myproc()->table_mutex[descriptor] < 0){
-        return -1;
-    }
-    if (myproc()->table_mutex[descriptor] >= NMUTEX){
-        return -1;
-    }
     return 0;
 }
 
@@ -39,7 +31,18 @@ int acquire_mutex(int descriptor) {
     if (checker_mutex(descriptor) == -1){
         return -1;
     }
-    acquiresleep(&mutex_[myproc()->table_mutex[descriptor]].sl_lock);
+    struct proc *p = myproc();
+    acquire(&p->lock);
+    struct mutex * mut = p->table_mutex[descriptor];
+    if (mut == 0 || holdingsleep(&mut->sl_lock)){
+        return -1;
+    }
+    uint pid_ = p->pid;
+    release(&p->lock);
+    acquiresleep(&mut->sl_lock);
+    acquire(&mut->sp_lock);
+    mut->pid = pid_;
+    release(&mut->sp_lock);
     return 0;
 }
 
@@ -48,26 +51,46 @@ int release_mutex(int descriptor){
     if (checker_mutex(descriptor) == -1){
         return -1;
     }
-    releasesleep(&mutex_[myproc()->table_mutex[descriptor]].sl_lock);
+    struct proc *p = myproc();
+    acquire(&p->lock);
+    struct mutex* mut = p->table_mutex[descriptor];
+    if (mut == 0 || !holdingsleep(&mut->sl_lock)){
+        return -1;
+    }
+    uint pid_ = p->pid;
+    release(&p->lock);
+    acquire(&mut->sp_lock);
+    if (pid_ != mut->pid){
+        release(&mut->sp_lock);
+        return -1;
+    }
+    mut->pid = -1;
+    release(&mut->sp_lock);
+    releasesleep(&mut->sl_lock);
     return 0;
 }
 
 int create_mutex(void){
+    struct proc* p = myproc();
+    int ans = -1;
     for (int i = 0; i < NMUTEX; ++i){
         acquire(&mutex_[i].sp_lock);
         if (mutex_[i].locked != 0){
             release(&mutex_[i].sp_lock);
         }else{
             mutex_[i].locked = 1;
-            release(&mutex_[i].sp_lock);
-            struct proc* p = myproc();
             acquire(&p->lock);
             for (int j = 0; j < NOMUTEX; ++j){
-                if (p->table_mutex[j] == -1){
-                    p->table_mutex[j] = i;
+                if (p->table_mutex[j] == 0){
+                    p->table_mutex[j] = &mutex_[i];
                     release(&p->lock);
-                    return j;
+                    ans = j;
+                    break;
                 }
+            }
+            if (ans != -1){
+                release(&mutex_[i].sp_lock);
+                return  ans;
             }
             release(&p->lock);
             return -1;
@@ -76,30 +99,31 @@ int create_mutex(void){
     return -1;
 }
 
-int use_mutex(int descriptor){
-    if (checker_mutex(descriptor) == -1){
-        return -1;
-    }
-    acquire(&mutex_[myproc()->table_mutex[descriptor]].sp_lock); mutex_[myproc()->table_mutex[descriptor]].locked += 1;
-    release(&mutex_[myproc()->table_mutex[descriptor]].sp_lock);
-    return 0;
-}
 
 
 int free_mutex(int descriptor){
     if (checker_mutex(descriptor) == -1){
         return -1;
     }
-    release_mutex(descriptor);
     struct proc* p = myproc();
-    acquire(&mutex_[p->table_mutex[descriptor]].sp_lock);
-    if (mutex_[p->table_mutex[descriptor]].locked == 0){
-        release(&mutex_[p->table_mutex[descriptor]].sp_lock);
+    acquire(&p->lock);
+    struct mutex *mut = p->table_mutex[descriptor];
+    release(&p->lock);
+    if (mut == 0){
         return -1;
     }
-    p->table_mutex[descriptor] = -1;
-    mutex_[descriptor].locked--;
-    release(&mutex_[descriptor].sp_lock);
+    p->table_mutex[descriptor] = 0;
+
+    acquire(&mut->sp_lock);
+    if (mut->locked == 0){
+        release(&mut->sp_lock);
+        return -1;
+    }
+    mut->locked--;
+    release(&mut->sp_lock);
+    if (holdingsleep(&mut->sl_lock)){
+        releasesleep(&mut->sl_lock);
+    }
     return 0;
 }
 
