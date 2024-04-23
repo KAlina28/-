@@ -1,40 +1,21 @@
 #include "kernel/types.h"
-#include "kernel.stat.h"
+#include "kernel/stat.h"
 #include "user/user.h"
-#include "kernek/param.h"
+#include "kernel/param.h"
 
 int main(int argc, char *argv[]){
-    if (argc < 2){
-        fprintf(2, "error");
-        exit(-1);
-    }
-    if (argc == 2 && strcmp(argv[1], "st") == 0){
-        int pid = fork();
-        int s;
-        if (pid == 0){
-            exec("vm", argv);
-            exit(0);
-        }else{
-            wait(&s);
-            char *buf = (char *) malloc(sizeof (char) * BUFFER_SIZE);
-            if (dmesg(buf, BUFFER_SIZE) < 0){
-                fprintf(2, "error");
-                exit(1);
-            }
-            printf("%s", buf);
-            free(buf);
-        }
-    }
-    char *buf = (char *) malloc(sizeof (char) * BUFFER_SIZE);
+    char *buf = malloc(BUFFER_SIZE + 1);
     if (!buf){
-        fprintf(2, "error");
+        fprintf(2, "error\n");
         exit(1);
     }
     if (dmesg(buf, BUFFER_SIZE) < 0){
-        fprintf(2, "error");
+        fprintf(2, "error: address\n");
         exit(1);
     }
-    printf("%s", buf);
+    for (int i = 0; i < BUFFER_SIZE; i++){
+        printf("%c", buf[i]);
+    }
     free(buf);
     exit(0);
 }

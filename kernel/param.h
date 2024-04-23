@@ -13,4 +13,4 @@
 #define MAXPATH      128   // maximum file path name
 #define MEMPAGE      1024
 #define PAGES        4
-#define BUFFER_SIZE  MEMPAGE*PAGES
+#define BUFFER_SIZE  (MEMPAGE*PAGES)
